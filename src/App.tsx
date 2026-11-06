@@ -1,13 +1,15 @@
+import basketballImage from './assets/basketball.png'
 import courtFullImage from './assets/court-full.png'
+import courtHalfImage from './assets/court-half.png'
 import { useEffect, useRef, useState } from 'react'
-import { CircleDot, Download, Eraser, Hand, MousePointer2, Pencil, RotateCcw, Save, Trash2, Triangle, Undo2, Redo2 } from 'lucide-react'
+import { CircleDot, Circle, Download, Eraser, Hand, MousePointer2, Pencil, RotateCcw, Save, Trash2, Triangle, Undo2, Redo2 } from 'lucide-react'
 
 type Point = { x: number; y: number }
 type Player = Point & { id: string; side: 'red' | 'blue'; number: number }
 type Marker = Point & { id: string; type: 'cone' | 'flat'; color: string }
 type Stroke = { id: string; points: Point[]; color: string; width: number }
-type Board = { players: Player[]; markers: Marker[]; strokes: Stroke[] }
-type Tool = 'select' | 'pen' | 'eraser' | 'cone' | 'flat'
+type Board = { players: Player[]; markers: Marker[]; strokes: Stroke[]; ball: Point; ballHolderId?: string | null }
+type Tool = 'select' | 'ball' | 'pen' | 'eraser' | 'cone' | 'flat'
 type Court = 'full' | 'half'
 const KEY = 'team-link-tactics-v1'
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -15,7 +17,7 @@ const initial = (): Board => ({
   players: [
     ...Array.from({ length: 5 }, (_, i): Player => ({ id: `red-${i}`, side: 'red', number: i + 1, x: 260 + (i % 3) * 90, y: 185 + Math.floor(i / 3) * 160 })),
     ...Array.from({ length: 5 }, (_, i): Player => ({ id: `blue-${i}`, side: 'blue', number: i + 1, x: 600 + (i % 3) * 90, y: 185 + Math.floor(i / 3) * 160 })),
-  ], markers: [], strokes: [],
+  ], markers: [], strokes: [], ball: { x: 500, y: 250 }, ballHolderId: null,
 })
 const load = (): Board => {
   try {
@@ -24,7 +26,7 @@ const load = (): Board => {
       const data: unknown = JSON.parse(v)
       if (data && typeof data === 'object' && 'players' in data && 'markers' in data && 'strokes' in data) {
         const b = data as Board
-        if (Array.isArray(b.players) && Array.isArray(b.markers) && Array.isArray(b.strokes)) return b
+        if (Array.isArray(b.players) && Array.isArray(b.markers) && Array.isArray(b.strokes)) return { ...b, ball: b.ball && Number.isFinite(b.ball.x) && Number.isFinite(b.ball.y) ? b.ball : { x: 500, y: 250 }, ballHolderId: null }
       }
     }
   } catch { /* ignore corrupt saved state */ }
@@ -33,38 +35,6 @@ const load = (): Board => {
 const clone = (b: Board): Board => JSON.parse(JSON.stringify(b)) as Board
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 const formatPoints = (points: Point[]) => points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-
-function CourtLines({ half }: { half: boolean }) {
-  const stroke = '#f8fafc'
-  const common = { fill: 'none', stroke, strokeWidth: 2.7, vectorEffect: 'non-scaling-stroke' as const }
-  return <g {...common} opacity=".95">
-    <rect x="36" y="36" width="928" height="488" rx="1" />
-    {half ? <>
-      <line x1="500" y1="36" x2="500" y2="524" />
-      <path d="M36 169 H196 V391 H36" />
-      <path d="M36 222 H115 V338 H36" />
-      <circle cx="196" cy="280" r="58" strokeDasharray="7 6" />
-      <circle cx="106" cy="280" r="8" fill="none" />
-      <path d="M36 90 H103 A205 205 0 0 1 103 470 H36" />
-      <path d="M103 90 V135 M103 425 V470" />
-      <path d="M36 250 A30 30 0 0 1 36 310" />
-    </> : <>
-      <line x1="500" y1="36" x2="500" y2="524" />
-      <circle cx="500" cy="280" r="58" />
-      <path d="M36 169 H196 V391 H36 M964 169 H804 V391 H964" />
-      <path d="M36 222 H115 V338 H36 M964 222 H885 V338 H964" />
-      <path d="M196 222 A58 58 0 0 1 196 338" strokeDasharray="7 6" />
-      <path d="M804 222 A58 58 0 0 0 804 338" strokeDasharray="7 6" />
-      <circle cx="196" cy="280" r="58" strokeDasharray="7 6" />
-      <circle cx="804" cy="280" r="58" strokeDasharray="7 6" />
-      <circle cx="106" cy="280" r="8" />
-      <circle cx="894" cy="280" r="8" />
-      <path d="M36 90 H103 A205 205 0 0 1 103 470 H36 M964 90 H897 A205 205 0 0 0 897 470 H964" />
-      <path d="M103 90 V135 M103 425 V470 M897 90 V135 M897 425 V470" />
-      <path d="M36 250 A30 30 0 0 1 36 310 M964 250 A30 30 0 0 0 964 310" />
-    </>}
-  </g>
-}
 
 function MarkerShape({ marker }: { marker: Marker }) {
   if (marker.type === 'cone') return <g transform={`translate(${marker.x} ${marker.y})`}>
@@ -93,7 +63,7 @@ export default function App() {
   const [message, setMessage] = useState('')
   const svgRef = useRef<SVGSVGElement>(null)
   const boardRef = useRef(board)
-  const dragRef = useRef<{ id: string; kind: 'player' | 'marker'; start: Board; moved: boolean } | null>(null)
+  const dragRef = useRef<{ id: string; kind: 'player' | 'marker' | 'ball'; start: Board; moved: boolean } | null>(null)
   const drawRef = useRef<{ start: Board; stroke: Stroke } | null>(null)
   const eraseRef = useRef<Board | null>(null)
   useEffect(() => { boardRef.current = board; localStorage.setItem(KEY, JSON.stringify(board)) }, [board])
@@ -109,9 +79,10 @@ export default function App() {
     const matrix = svg.getScreenCTM()
     if (!matrix) return null
     const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
-    return { x: clamp(p.x, 40, 960), y: clamp(p.y, 40, 520) }
+    return { x: clamp(p.x, 40, 960), y: clamp(p.y, 40, court === 'full' ? 460 : 710) }
   }
-  const hit = (p: Point): { id: string; kind: 'player' | 'marker' } | null => {
+  const hit = (p: Point): { id: string; kind: 'player' | 'marker' | 'ball' } | null => {
+    if (Math.hypot(boardRef.current.ball.x - p.x, boardRef.current.ball.y - p.y) < 29) return { id: 'basketball', kind: 'ball' }
     const players = [...boardRef.current.players].reverse()
     const player = players.find(v => Math.hypot(v.x - p.x, v.y - p.y) < 24)
     if (player) return { id: player.id, kind: 'player' }
@@ -133,6 +104,9 @@ export default function App() {
     if (tool === 'select') {
       const target = hit(p)
       if (target) dragRef.current = { ...target, start: clone(boardRef.current), moved: false }
+    } else if (tool === 'ball') {
+      commit({ ...boardRef.current, ball: p, ballHolderId: null })
+      setTool('select')
     } else if (tool === 'pen') {
       const stroke = { id: uid(), points: [p], color: penColor, width: penWidth }
       drawRef.current = { start: clone(boardRef.current), stroke }
@@ -140,7 +114,7 @@ export default function App() {
     } else if (tool === 'eraser') {
       eraseRef.current = clone(boardRef.current)
       eraseAt(p)
-    } else {
+    } else if (tool === 'cone' || tool === 'flat') {
       commit({ ...boardRef.current, markers: [...boardRef.current.markers, { id: uid(), x: p.x, y: p.y, type: tool, color: markerColor }] })
       setTool('select')
     }
@@ -152,7 +126,8 @@ export default function App() {
       const drag = dragRef.current
       drag.moved = true
       const b = boardRef.current
-      if (drag.kind === 'player') setBoard({ ...b, players: b.players.map(v => v.id === drag.id ? { ...v, ...p } : v) })
+      if (drag.kind === 'ball') setBoard({ ...b, ball: p })
+      else if (drag.kind === 'player') setBoard({ ...b, players: b.players.map(v => v.id === drag.id ? { ...v, ...p } : v) })
       else setBoard({ ...b, markers: b.markers.map(v => v.id === drag.id ? { ...v, ...p } : v) })
     } else if (drawRef.current) {
       const s = drawRef.current.stroke
@@ -209,10 +184,10 @@ export default function App() {
     const copy = svg.cloneNode(true) as SVGSVGElement
     copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
     // SVGを単独で開いても背景画像が消えないよう、画像を埋め込む。
-    const background = copy.querySelector('#court-full-background')
+    const background = copy.querySelector('#court-background')
     if (background) {
       try {
-        const response = await fetch(courtFullImage)
+        const response = await fetch(court === 'full' ? courtFullImage : courtHalfImage)
         if (!response.ok) throw new Error('コート画像を取得できません')
         const blob = await response.blob()
         const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -227,8 +202,26 @@ export default function App() {
         return
       }
     }
+    const ballImage = copy.querySelector('#basketball-image')
+    if (ballImage) {
+      try {
+        const response = await fetch(basketballImage)
+        if (!response.ok) throw new Error('ボール画像を取得できません')
+        const blob = await response.blob()
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result))
+          reader.onerror = () => reject(new Error('画像の読み込みに失敗しました'))
+          reader.readAsDataURL(blob)
+        })
+        ballImage.setAttribute('href', dataUrl)
+      } catch {
+        alert('ボール画像を埋め込めなかったため、画像保存を中止しました')
+        return
+      }
+    }
     copy.setAttribute('width', '1600')
-    copy.setAttribute('height', '896')
+    copy.setAttribute('height', court === 'full' ? '800' : '1200')
     const blob = new Blob([new XMLSerializer().serializeToString(copy)], { type: 'image/svg+xml;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -250,7 +243,7 @@ export default function App() {
       const b = (data as { board: Board; court?: Court }).board
       if (!Array.isArray(b.players) || !Array.isArray(b.markers) || !Array.isArray(b.strokes)) throw new Error('データが不正です')
       if (!confirm('現在のボードを読み込んだデータで置き換えますか？')) return
-      commit(b)
+      commit({ ...b, ball: b.ball && Number.isFinite(b.ball.x) && Number.isFinite(b.ball.y) ? b.ball : { x: 500, y: 250 }, ballHolderId: null })
       const c = (data as { court?: Court }).court
       if (c === 'full' || c === 'half') setCourt(c)
       setMessage('バックアップを読み込みました')
@@ -261,8 +254,28 @@ export default function App() {
     <main className="main">
       <div className="title-row"><div><span className="eyebrow">TACTICS BOARD</span><h1>戦術ボード</h1><p>選手をドラッグして配置。ペンで動きを描き、コーンやマーカーを置けます。</p></div><div className="top-actions"><button onClick={undo} disabled={!past.length}><Undo2 size={17}/>戻す</button><button onClick={redo} disabled={!future.length}><Redo2 size={17}/>進む</button><button onClick={() => { void exportSvg() }}><Download size={17}/>画像保存</button></div></div>
       <section className="workspace">
+        <div className="board-area">
+          <div className="board-bar"><div className="court-toggle"><button className={court === 'full' ? 'chosen' : ''} onClick={() => setCourt('full')}>フルコート</button><button className={court === 'half' ? 'chosen' : ''} onClick={() => setCourt('half')}>ハーフコート</button></div><div className="board-hint"><Hand size={15}/>{tool === 'select' ? '駒・マーカーをドラッグ' : tool === 'pen' ? '指でなぞって描画' : tool === 'eraser' ? '線・マーカーをなぞって削除' : tool === 'ball' ? 'コートをタップしてボールを配置' : 'コートをタップして配置'}</div></div>
+          <div className={`court-container tool-${tool}`}><svg ref={svgRef} viewBox={court === 'full' ? '0 0 1000 500' : '0 0 1000 750'} xmlns="http://www.w3.org/2000/svg" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
+            <image id="court-background" href={court === 'full' ? courtFullImage : courtHalfImage} x="0" y="0" width="1000" height={court === 'full' ? 500 : 750} preserveAspectRatio="none" />
+            {board.strokes.map(s => <polyline key={s.id} points={formatPoints(s.points)} stroke={s.color} strokeWidth={s.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
+            {draft && <polyline points={formatPoints(draft.points)} stroke={draft.color} strokeWidth={draft.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+            {board.markers.map(m => <MarkerShape key={m.id} marker={m} />)}
+            {board.players.map(p => <g key={p.id} transform={`translate(${p.x} ${p.y})`}>
+              <circle cy="3" r="22" fill="#0f172a" opacity=".25"/>
+              <circle r="21" fill={p.side === 'red' ? '#e33e4c' : '#2563eb'} stroke="#fff" strokeWidth="3"/>
+              <text textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="20" fontWeight="800" fontFamily="Arial, sans-serif">{p.number}</text>
+            </g>)}
+            {/* 選手駒とは別に、常に表示される移動可能なバスケットボール */}
+            <g transform={`translate(${board.ball.x} ${board.ball.y})`}>
+              <image id="basketball-image" href={basketballImage} x="-18" y="-18" width="36" height="36" preserveAspectRatio="xMidYMid meet" />
+            </g>
+          </svg></div>
+          <div className="board-bottom"><span><i className="legend red"/>赤チーム 5人 <i className="legend blue"/>青チーム 5人</span><span>自動保存中 <Save size={14}/></span></div>
+        </div>
         <aside className="toolbar"><div className="tool-title">操作ツール</div>
           <button className={tool === 'select' ? 'active' : ''} onClick={() => setTool('select')}><MousePointer2 size={19}/>駒を動かす</button>
+          <button className={tool === 'ball' ? 'active' : ''} onClick={() => setTool('ball')}><Circle size={19}/>ボールを置く・移動</button>
           <button className={tool === 'pen' ? 'active' : ''} onClick={() => setTool('pen')}><Pencil size={19}/>線を描く</button>
           <button className={tool === 'eraser' ? 'active' : ''} onClick={() => setTool('eraser')}><Eraser size={19}/>消しゴム</button>
           <div className="tool-divider" />
@@ -273,29 +286,9 @@ export default function App() {
           <div className="tool-title">線の太さ</div><div className="widths">{[3, 5, 8].map(w => <button key={w} className={penWidth === w ? 'selected' : ''} onClick={() => setPenWidth(w)}><span style={{ height: w }} /></button>)}</div>
           <div className="tool-title">マーカーの色</div><div className="colors">{['#f97316', '#facc15', '#22c55e', '#38bdf8', '#ef4444'].map(c => <button key={c} title={c} className={`color ${markerColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => setMarkerColor(c)} />)}</div>
         </aside>
-        <div className="board-area">
-          <div className="board-bar"><div className="court-toggle"><button className={court === 'full' ? 'chosen' : ''} onClick={() => setCourt('full')}>フルコート</button><button className={court === 'half' ? 'chosen' : ''} onClick={() => setCourt('half')}>ハーフコート</button></div><div className="board-hint"><Hand size={15}/>{tool === 'select' ? '駒・マーカーをドラッグ' : tool === 'pen' ? '指でなぞって描画' : tool === 'eraser' ? '線・マーカーをなぞって削除' : 'コートをタップして配置'}</div></div>
-          <div className={`court-container tool-${tool}`}><svg ref={svgRef} viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
-            {court === 'full' ? (
-              <image id="court-full-background" href={courtFullImage} x="0" y="0" width="1000" height="560" preserveAspectRatio="none" />
-            ) : (
-              <>
-                <rect width="1000" height="560" fill="#b7783d" />
-                {Array.from({ length: 17 }, (_, i) => <rect key={i} x={i * 60} width="59" height="560" fill={i % 2 ? '#c88b4d' : '#b7783d'} opacity=".42" />)}
-                <rect x="36" y="36" width="928" height="488" fill="#c99154" opacity=".35" />
-                <CourtLines half />
-              </>
-            )}
-            {board.strokes.map(s => <polyline key={s.id} points={formatPoints(s.points)} stroke={s.color} strokeWidth={s.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
-            {draft && <polyline points={formatPoints(draft.points)} stroke={draft.color} strokeWidth={draft.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
-            {board.markers.map(m => <MarkerShape key={m.id} marker={m} />)}
-            {board.players.map(p => <g key={p.id} transform={`translate(${p.x} ${p.y})`}><circle cy="3" r="22" fill="#0f172a" opacity=".25"/><circle r="21" fill={p.side === 'red' ? '#e33e4c' : '#2563eb'} stroke="#fff" strokeWidth="3"/><text textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="20" fontWeight="800" fontFamily="Arial, sans-serif">{p.number}</text></g>)}
-          </svg></div>
-          <div className="board-bottom"><span><i className="legend red"/>赤チーム 5人 <i className="legend blue"/>青チーム 5人</span><span>自動保存中 <Save size={14}/></span></div>
-        </div>
       </section>
       <div className="bottom-actions"><button onClick={clearDrawings}><Trash2 size={17}/>線・マーカーを全消去</button><button onClick={reset}><RotateCcw size={17}/>ボードを初期化</button><button onClick={saveJson}><Save size={17}/>バックアップ保存</button><label className="upload-button"><Download size={17}/>バックアップ読込<input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }} /></label></div>
-      <div className="help"><div><strong>使い方</strong><p>「駒を動かす」で赤・青の駒や配置済みの道具を移動できます。「線を描く」で指やマウスで自由に描画できます。コーン・マーカーはツールを選んでコートをタップすると追加されます。</p></div><div><strong>保存について</strong><p>ボードはこの端末のブラウザに自動保存されます。端末変更やブラウザデータ削除に備えて、JSONバックアップも保存してください。画像保存はSVG形式です。</p></div></div>
+      <div className="help"><div><strong>使い方</strong><p>「駒を動かす」で赤・青の駒や配置済みの道具を移動できます。オレンジ色のボールは最初からコート中央に表示されます。「駒を動かす」でボールもドラッグできます。「ボールを置く・移動」を選ぶとタップした位置にボールを配置できます。「線を描く」で指やマウスで自由に描画できます。コーン・マーカーはツールを選んでコートをタップすると追加されます。</p></div><div><strong>保存について</strong><p>ボードはこの端末のブラウザに自動保存されます。端末変更やブラウザデータ削除に備えて、JSONバックアップも保存してください。画像保存はSVG形式です。</p></div></div>
       {message && <div className="toast" role="status" onClick={() => setMessage('')}>{message} ×</div>}
     </main>
   </div>
