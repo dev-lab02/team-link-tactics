@@ -79,7 +79,7 @@ export default function App() {
     const matrix = svg.getScreenCTM()
     if (!matrix) return null
     const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
-    return { x: clamp(p.x, 40, 960), y: clamp(p.y, 40, court === 'full' ? 460 : 710) }
+    return { x: clamp(p.x, -26, 1026), y: clamp(p.y, -26, (court === 'full' ? 500 : 750) + 26) }
   }
   const hit = (p: Point): { id: string; kind: 'player' | 'marker' | 'ball' } | null => {
     if (Math.hypot(boardRef.current.ball.x - p.x, boardRef.current.ball.y - p.y) < 29) return { id: 'basketball', kind: 'ball' }
@@ -221,7 +221,7 @@ export default function App() {
       }
     }
     copy.setAttribute('width', '1600')
-    copy.setAttribute('height', court === 'full' ? '800' : '1200')
+    copy.setAttribute('height', court === 'full' ? String(Math.round(1600 * 584 / 1084)) : String(Math.round(1600 * 834 / 1084)))
     const blob = new Blob([new XMLSerializer().serializeToString(copy)], { type: 'image/svg+xml;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -250,13 +250,13 @@ export default function App() {
     } catch { alert('バックアップファイルを読み込めませんでした') }
   }
   return <div className="app">
-    <header className="header"><div className="brand"><span className="brand-icon">TL</span><div><small>TEAM LINK</small><strong>戦術ボード</strong></div></div><span className="header-note">BASKETBALL TACTICS</span></header>
+    <header className="header"><strong className="header-title">TACTICS BOARD for TEAM LINK</strong></header>
     <main className="main">
-      <div className="title-row"><div><span className="eyebrow">TACTICS BOARD</span><h1>戦術ボード</h1><p>選手をドラッグして配置。ペンで動きを描き、コーンやマーカーを置けます。</p></div><div className="top-actions"><button onClick={undo} disabled={!past.length}><Undo2 size={17}/>戻す</button><button onClick={redo} disabled={!future.length}><Redo2 size={17}/>進む</button><button onClick={() => { void exportSvg() }}><Download size={17}/>画像保存</button></div></div>
       <section className="workspace">
         <div className="board-area">
           <div className="board-bar"><div className="court-toggle"><button className={court === 'full' ? 'chosen' : ''} onClick={() => setCourt('full')}>フルコート</button><button className={court === 'half' ? 'chosen' : ''} onClick={() => setCourt('half')}>ハーフコート</button></div><div className="board-hint"><Hand size={15}/>{tool === 'select' ? '駒・マーカーをドラッグ' : tool === 'pen' ? '指でなぞって描画' : tool === 'eraser' ? '線・マーカーをなぞって削除' : tool === 'ball' ? 'コートをタップしてボールを配置' : 'コートをタップして配置'}</div></div>
-          <div className={`court-container tool-${tool}`}><svg ref={svgRef} viewBox={court === 'full' ? '0 0 1000 500' : '0 0 1000 750'} xmlns="http://www.w3.org/2000/svg" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
+          <div className={`court-container tool-${tool}`}><svg ref={svgRef} viewBox={court === 'full' ? '-42 -42 1084 584' : '-42 -42 1084 834'} xmlns="http://www.w3.org/2000/svg" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
+            <rect x="-42" y="-42" width="1084" height={court === 'full' ? 584 : 834} fill="#d59b59" />
             <image id="court-background" href={court === 'full' ? courtFullImage : courtHalfImage} x="0" y="0" width="1000" height={court === 'full' ? 500 : 750} preserveAspectRatio="none" />
             {board.strokes.map(s => <polyline key={s.id} points={formatPoints(s.points)} stroke={s.color} strokeWidth={s.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
             {draft && <polyline points={formatPoints(draft.points)} stroke={draft.color} strokeWidth={draft.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
@@ -274,6 +274,8 @@ export default function App() {
           <div className="board-bottom"><span><i className="legend red"/>赤チーム 5人 <i className="legend blue"/>青チーム 5人</span><span>自動保存中 <Save size={14}/></span></div>
         </div>
         <aside className="toolbar"><div className="tool-title">操作ツール</div>
+          <div className="toolbar-actions"><button onClick={undo} disabled={!past.length}><Undo2 size={17}/>戻す</button><button onClick={redo} disabled={!future.length}><Redo2 size={17}/>進む</button><button className="save-image" onClick={() => { void exportSvg() }}><Download size={17}/>画像保存</button></div>
+          <div className="tool-divider" />
           <button className={tool === 'select' ? 'active' : ''} onClick={() => setTool('select')}><MousePointer2 size={19}/>駒を動かす</button>
           <button className={tool === 'ball' ? 'active' : ''} onClick={() => setTool('ball')}><Circle size={19}/>ボールを置く・移動</button>
           <button className={tool === 'pen' ? 'active' : ''} onClick={() => setTool('pen')}><Pencil size={19}/>線を描く</button>
@@ -288,7 +290,7 @@ export default function App() {
         </aside>
       </section>
       <div className="bottom-actions"><button onClick={clearDrawings}><Trash2 size={17}/>線・マーカーを全消去</button><button onClick={reset}><RotateCcw size={17}/>ボードを初期化</button><button onClick={saveJson}><Save size={17}/>バックアップ保存</button><label className="upload-button"><Download size={17}/>バックアップ読込<input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }} /></label></div>
-      <div className="help"><div><strong>使い方</strong><p>「駒を動かす」で赤・青の駒や配置済みの道具を移動できます。オレンジ色のボールは最初からコート中央に表示されます。「駒を動かす」でボールもドラッグできます。「ボールを置く・移動」を選ぶとタップした位置にボールを配置できます。「線を描く」で指やマウスで自由に描画できます。コーン・マーカーはツールを選んでコートをタップすると追加されます。</p></div><div><strong>保存について</strong><p>ボードはこの端末のブラウザに自動保存されます。端末変更やブラウザデータ削除に備えて、JSONバックアップも保存してください。画像保存はSVG形式です。</p></div></div>
+      <div className="help"><div><strong>使い方</strong><p>「駒を動かす」で赤・青の駒や配置済みの道具を移動できます。白いコートラインの外側にも駒を置けるため、スローインの配置ができます。オレンジ色のボールは最初からコート中央に表示されます。「駒を動かす」でボールもドラッグできます。「ボールを置く・移動」を選ぶとタップした位置にボールを配置できます。「線を描く」で指やマウスで自由に描画できます。コーン・マーカーはツールを選んでコートをタップすると追加されます。</p></div><div><strong>保存について</strong><p>ボードはこの端末のブラウザに自動保存されます。端末変更やブラウザデータ削除に備えて、JSONバックアップも保存してください。画像保存はSVG形式です。</p></div></div>
       {message && <div className="toast" role="status" onClick={() => setMessage('')}>{message} ×</div>}
     </main>
   </div>

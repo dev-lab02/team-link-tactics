@@ -27,3 +27,18 @@
  .toolbar .tool-divider{display:none}
  .board-hint{display:none}
 }
+
+/* Compact branded header and throw-in margin */
+.header{height:42px;min-height:42px;padding:0 clamp(10px,2vw,32px);justify-content:flex-start}
+.header-title{font-size:12px;letter-spacing:.18em;color:#e9f3ff;font-weight:850}
+.main{padding-top:8px}
+.workspace{border-radius:12px}
+.board-area{padding-top:8px}
+.board-bar{margin-bottom:6px}
+.court-container{background:#d59b59}
+.toolbar-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.toolbar-actions button{display:flex;align-items:center;gap:7px;justify-content:center;white-space:nowrap;background:#fff;color:#34506f;border:1px solid #d8e2ee;border-radius:9px;padding:9px 12px;font-size:12px;font-weight:750;min-height:42px}
+.toolbar-actions button:hover{background:#edf5ff}
+.toolbar-actions .save-image{background:#216dc9;color:white;border-color:#216dc9}
+.toolbar-actions .save-image:hover{background:#175ab0}
+@media(max-width:850px){.header{height:38px;min-height:38px}.toolbar-actions{flex-wrap:wrap}.toolbar-actions button{min-height:38px;font-size:11px;padding:8px 10px}}
