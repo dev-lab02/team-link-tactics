@@ -42,3 +42,47 @@
 .toolbar-actions .save-image{background:#216dc9;color:white;border-color:#216dc9}
 .toolbar-actions .save-image:hover{background:#175ab0}
 @media(max-width:850px){.header{height:38px;min-height:38px}.toolbar-actions{flex-wrap:wrap}.toolbar-actions button{min-height:38px;font-size:11px;padding:8px 10px}}
+
+/* 2026-11-13: ヘッダー・説明欄をなくし、コート切替の右にアイコンツールを配置 */
+.main{padding-top:4px}
+.board-area{padding-top:8px}
+.board-bar{justify-content:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:5px}
+.court-toggle{flex-shrink:0}
+.compact-tools{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-width:0}
+.compact-tools>button{width:36px;height:36px;display:grid;place-items:center;border:1px solid #d8e2ee;background:#fff;color:#34506f;border-radius:8px;padding:0}
+.compact-tools>button.active{background:#eaf3ff;border-color:#2c75d5;color:#1469ca}
+.compact-tools>button:disabled{opacity:.35}
+.compact-tools>button:hover:not(:disabled){background:#edf5ff}
+.compact-separator{height:25px;width:1px;background:#dbe5f0;margin:0 3px}
+.compact-colors,.compact-widths{display:flex;align-items:center;gap:5px}
+.compact-colors .color{width:23px;height:23px;border:2px solid #d8e2ee;border-radius:50%;padding:0;cursor:pointer}
+.compact-colors .color.selected{outline:2px solid #1d73d2;outline-offset:1px}
+.compact-widths button{width:29px;height:30px;display:grid;place-items:center;border:1px solid #d8e2ee;border-radius:7px;background:#fff;padding:0}
+.compact-widths button.selected{border-color:#1d73d2;background:#eaf3ff}
+.compact-widths button span{width:19px;background:#2b73cc;border-radius:9px}
+@media(max-width:850px){.compact-tools>button{width:34px;height:34px}.board-bar{gap:6px}.compact-separator{margin:0 1px}}
+
+/* ボード管理操作をコート切替・描画ツールと同じ行に集約 */
+.board-utility{display:flex;align-items:center;gap:5px;margin-left:auto;flex-shrink:0}
+.board-utility>button,.board-upload{display:grid;place-items:center;width:36px;height:36px;border:1px solid #d8e2ee;border-radius:8px;background:#fff;color:#34506f;padding:0;cursor:pointer}
+.board-utility>button:hover,.board-upload:hover{background:#edf5ff}
+.board-upload input{display:none}
+.board-legend{display:flex;align-items:center;gap:4px;font-size:11px;color:#7186a2;white-space:nowrap;margin-right:3px}
+.board-legend .legend{margin:0 0 0 3px;width:9px;height:9px}
+.board-autosave{display:flex;align-items:center;color:#8294aa;margin-left:3px}
+@media(max-width:850px){.board-utility{margin-left:0}.board-utility>button,.board-upload{width:34px;height:34px}}
+
+/* コートを画面内に収める：幅を少し縮小し、高さはビューポートに合わせて制限 */
+html,body,#root{min-height:100%;}
+.main{padding:4px 8px 8px;max-width:none;}
+.workspace{border:0;background:transparent;box-shadow:none;}
+.board-area{padding:4px 0 0;}
+.board-bar{margin-bottom:5px;}
+.court-container{margin-inline:auto;max-width:100%;}
+.court-container.court-full{width:min(94%, calc((100dvh - 150px) * 1.856));}
+.court-container.court-half{width:min(94%, calc((100dvh - 150px) * 1.300));}
+.court-container svg{width:100%;height:auto;}
+@media(max-width:850px){
+ .court-container.court-full{width:min(96%, calc((100dvh - 205px) * 1.856));}
+ .court-container.court-half{width:min(96%, calc((100dvh - 205px) * 1.300));}
+}

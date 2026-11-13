@@ -2,7 +2,7 @@ import basketballImage from './assets/basketball.png'
 import courtFullImage from './assets/court-full.png'
 import courtHalfImage from './assets/court-half.png'
 import { useEffect, useRef, useState } from 'react'
-import { CircleDot, Circle, Download, Eraser, Hand, MousePointer2, Pencil, RotateCcw, Save, Trash2, Triangle, Undo2, Redo2 } from 'lucide-react'
+import { CircleDot, Circle, Download, Eraser, MousePointer2, Pencil, RotateCcw, Save, Trash2, Triangle, Undo2, Redo2 } from 'lucide-react'
 
 type Point = { x: number; y: number }
 type Player = Point & { id: string; side: 'red' | 'blue'; number: number }
@@ -84,7 +84,7 @@ export default function App() {
   const hit = (p: Point): { id: string; kind: 'player' | 'marker' | 'ball' } | null => {
     if (Math.hypot(boardRef.current.ball.x - p.x, boardRef.current.ball.y - p.y) < 29) return { id: 'basketball', kind: 'ball' }
     const players = [...boardRef.current.players].reverse()
-    const player = players.find(v => Math.hypot(v.x - p.x, v.y - p.y) < 24)
+    const player = players.find(v => Math.hypot(v.x - p.x, v.y - p.y) < (court === 'half' ? 30 : 24))
     if (player) return { id: player.id, kind: 'player' }
     const marker = [...boardRef.current.markers].reverse().find(v => Math.hypot(v.x - p.x, v.y - p.y) < 26)
     return marker ? { id: marker.id, kind: 'marker' } : null
@@ -250,18 +250,44 @@ export default function App() {
     } catch { alert('バックアップファイルを読み込めませんでした') }
   }
   return <div className="app">
-    <header className="header"><strong className="header-title">TACTICS BOARD for TEAM LINK</strong></header>
     <main className="main">
       <section className="workspace">
         <div className="board-area">
-          <div className="board-bar"><div className="court-toggle"><button className={court === 'full' ? 'chosen' : ''} onClick={() => setCourt('full')}>フルコート</button><button className={court === 'half' ? 'chosen' : ''} onClick={() => setCourt('half')}>ハーフコート</button></div><div className="board-hint"><Hand size={15}/>{tool === 'select' ? '駒・マーカーをドラッグ' : tool === 'pen' ? '指でなぞって描画' : tool === 'eraser' ? '線・マーカーをなぞって削除' : tool === 'ball' ? 'コートをタップしてボールを配置' : 'コートをタップして配置'}</div></div>
-          <div className={`court-container tool-${tool}`}><svg ref={svgRef} viewBox={court === 'full' ? '-42 -42 1084 584' : '-42 -42 1084 834'} xmlns="http://www.w3.org/2000/svg" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
+          <div className="board-bar">
+            <div className="court-toggle"><button className={court === 'full' ? 'chosen' : ''} onClick={() => setCourt('full')}>フルコート</button><button className={court === 'half' ? 'chosen' : ''} onClick={() => setCourt('half')}>ハーフコート</button></div>
+            <div className="compact-tools" aria-label="操作ツール">
+              <button title="駒を動かす" aria-label="駒を動かす" aria-pressed={tool === 'select'} className={tool === 'select' ? 'active' : ''} onClick={() => setTool('select')}><MousePointer2 size={19}/></button>
+              <button title="ボールを置く・移動" aria-label="ボールを置く・移動" aria-pressed={tool === 'ball'} className={tool === 'ball' ? 'active' : ''} onClick={() => setTool('ball')}><Circle size={19}/></button>
+              <button title="線を描く" aria-label="線を描く" aria-pressed={tool === 'pen'} className={tool === 'pen' ? 'active' : ''} onClick={() => setTool('pen')}><Pencil size={19}/></button>
+              <button title="消しゴム" aria-label="消しゴム" aria-pressed={tool === 'eraser'} className={tool === 'eraser' ? 'active' : ''} onClick={() => setTool('eraser')}><Eraser size={19}/></button>
+              <button title="三角コーン" aria-label="三角コーン" aria-pressed={tool === 'cone'} className={tool === 'cone' ? 'active' : ''} onClick={() => setTool('cone')}><Triangle size={19}/></button>
+              <button title="フラットマーカー" aria-label="フラットマーカー" aria-pressed={tool === 'flat'} className={tool === 'flat' ? 'active' : ''} onClick={() => setTool('flat')}><CircleDot size={19}/></button>
+              <span className="compact-separator" />
+              <div className="compact-colors" aria-label="線の色">{['#facc15', '#ffffff', '#fb7185', '#60a5fa', '#34d399', '#0f172a'].map(c => <button key={c} title={`線の色 ${c}`} aria-label={`線の色 ${c}`} className={`color ${penColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => { setPenColor(c); setTool('pen') }} />)}</div>
+              <div className="compact-widths" aria-label="線の太さ">{[3, 5, 8].map(w => <button key={w} title={`線の太さ ${w}`} aria-label={`線の太さ ${w}`} className={penWidth === w ? 'selected' : ''} onClick={() => { setPenWidth(w); setTool('pen') }}><span style={{ height: w }} /></button>)}</div>
+              <span className="compact-separator" />
+              <div className="compact-colors" aria-label="マーカーの色">{['#f97316', '#facc15', '#22c55e', '#38bdf8', '#ef4444'].map(c => <button key={c} title={`マーカーの色 ${c}`} aria-label={`マーカーの色 ${c}`} className={`color ${markerColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => setMarkerColor(c)} />)}</div>
+              <span className="compact-separator" />
+              <button title="元に戻す" aria-label="元に戻す" onClick={undo} disabled={!past.length}><Undo2 size={19}/></button>
+              <button title="やり直す" aria-label="やり直す" onClick={redo} disabled={!future.length}><Redo2 size={19}/></button>
+              <button title="画像保存" aria-label="画像保存" onClick={() => { void exportSvg() }}><Download size={19}/></button>
+            </div>
+            <div className="board-utility" aria-label="ボード管理">
+              <span className="board-legend" title="赤チーム5人・青チーム5人"><i className="legend red"/>5 <i className="legend blue"/>5</span>
+              <button title="線・マーカーを全消去" aria-label="線・マーカーを全消去" onClick={clearDrawings}><Trash2 size={18}/></button>
+              <button title="ボードを初期化" aria-label="ボードを初期化" onClick={reset}><RotateCcw size={18}/></button>
+              <button title="バックアップを保存" aria-label="バックアップを保存" onClick={saveJson}><Save size={18}/></button>
+              <label className="board-upload" title="バックアップを読み込む" aria-label="バックアップを読み込む"><Download size={18}/><input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }} /></label>
+              <span className="board-autosave" title="このブラウザに自動保存"><Save size={14}/></span>
+            </div>
+          </div>
+          <div className={`court-container court-${court} tool-${tool}`}><svg ref={svgRef} viewBox={court === 'full' ? '-42 -42 1084 584' : '-42 -42 1084 834'} xmlns="http://www.w3.org/2000/svg" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
             <rect x="-42" y="-42" width="1084" height={court === 'full' ? 584 : 834} fill="#d59b59" />
             <image id="court-background" href={court === 'full' ? courtFullImage : courtHalfImage} x="0" y="0" width="1000" height={court === 'full' ? 500 : 750} preserveAspectRatio="none" />
             {board.strokes.map(s => <polyline key={s.id} points={formatPoints(s.points)} stroke={s.color} strokeWidth={s.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
             {draft && <polyline points={formatPoints(draft.points)} stroke={draft.color} strokeWidth={draft.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
             {board.markers.map(m => <MarkerShape key={m.id} marker={m} />)}
-            {board.players.map(p => <g key={p.id} transform={`translate(${p.x} ${p.y})`}>
+            {board.players.map(p => <g key={p.id} transform={`translate(${p.x} ${p.y}) scale(${court === 'half' ? 1.22 : 1})`}>
               <circle cy="3" r="22" fill="#0f172a" opacity=".25"/>
               <circle r="21" fill={p.side === 'red' ? '#e33e4c' : '#2563eb'} stroke="#fff" strokeWidth="3"/>
               <text textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="20" fontWeight="800" fontFamily="Arial, sans-serif">{p.number}</text>
@@ -271,26 +297,12 @@ export default function App() {
               <image id="basketball-image" href={basketballImage} x="-18" y="-18" width="36" height="36" preserveAspectRatio="xMidYMid meet" />
             </g>
           </svg></div>
-          <div className="board-bottom"><span><i className="legend red"/>赤チーム 5人 <i className="legend blue"/>青チーム 5人</span><span>自動保存中 <Save size={14}/></span></div>
+
         </div>
-        <aside className="toolbar"><div className="tool-title">操作ツール</div>
-          <div className="toolbar-actions"><button onClick={undo} disabled={!past.length}><Undo2 size={17}/>戻す</button><button onClick={redo} disabled={!future.length}><Redo2 size={17}/>進む</button><button className="save-image" onClick={() => { void exportSvg() }}><Download size={17}/>画像保存</button></div>
-          <div className="tool-divider" />
-          <button className={tool === 'select' ? 'active' : ''} onClick={() => setTool('select')}><MousePointer2 size={19}/>駒を動かす</button>
-          <button className={tool === 'ball' ? 'active' : ''} onClick={() => setTool('ball')}><Circle size={19}/>ボールを置く・移動</button>
-          <button className={tool === 'pen' ? 'active' : ''} onClick={() => setTool('pen')}><Pencil size={19}/>線を描く</button>
-          <button className={tool === 'eraser' ? 'active' : ''} onClick={() => setTool('eraser')}><Eraser size={19}/>消しゴム</button>
-          <div className="tool-divider" />
-          <button className={tool === 'cone' ? 'active' : ''} onClick={() => setTool('cone')}><Triangle size={19}/>三角コーン</button>
-          <button className={tool === 'flat' ? 'active' : ''} onClick={() => setTool('flat')}><CircleDot size={19}/>フラットマーカー</button>
-          <div className="tool-divider" />
-          <div className="tool-title">線の色</div><div className="colors">{['#facc15', '#ffffff', '#fb7185', '#60a5fa', '#34d399', '#0f172a'].map(c => <button key={c} title={c} className={`color ${penColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => { setPenColor(c); setTool('pen') }} />)}</div>
-          <div className="tool-title">線の太さ</div><div className="widths">{[3, 5, 8].map(w => <button key={w} className={penWidth === w ? 'selected' : ''} onClick={() => setPenWidth(w)}><span style={{ height: w }} /></button>)}</div>
-          <div className="tool-title">マーカーの色</div><div className="colors">{['#f97316', '#facc15', '#22c55e', '#38bdf8', '#ef4444'].map(c => <button key={c} title={c} className={`color ${markerColor === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => setMarkerColor(c)} />)}</div>
-        </aside>
+
       </section>
-      <div className="bottom-actions"><button onClick={clearDrawings}><Trash2 size={17}/>線・マーカーを全消去</button><button onClick={reset}><RotateCcw size={17}/>ボードを初期化</button><button onClick={saveJson}><Save size={17}/>バックアップ保存</button><label className="upload-button"><Download size={17}/>バックアップ読込<input type="file" accept="application/json,.json" onChange={e => { void restore(e.target.files?.[0]); e.target.value = '' }} /></label></div>
-      <div className="help"><div><strong>使い方</strong><p>「駒を動かす」で赤・青の駒や配置済みの道具を移動できます。白いコートラインの外側にも駒を置けるため、スローインの配置ができます。オレンジ色のボールは最初からコート中央に表示されます。「駒を動かす」でボールもドラッグできます。「ボールを置く・移動」を選ぶとタップした位置にボールを配置できます。「線を描く」で指やマウスで自由に描画できます。コーン・マーカーはツールを選んでコートをタップすると追加されます。</p></div><div><strong>保存について</strong><p>ボードはこの端末のブラウザに自動保存されます。端末変更やブラウザデータ削除に備えて、JSONバックアップも保存してください。画像保存はSVG形式です。</p></div></div>
+
+
       {message && <div className="toast" role="status" onClick={() => setMessage('')}>{message} ×</div>}
     </main>
   </div>
