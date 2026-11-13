@@ -281,7 +281,7 @@ export default function App() {
               <span className="board-autosave" title="このブラウザに自動保存"><Save size={14}/></span>
             </div>
           </div>
-          <div className={`court-container court-${court} tool-${tool}`}><svg ref={svgRef} viewBox={court === 'full' ? '-42 -42 1084 584' : '-42 -42 1084 834'} xmlns="http://www.w3.org/2000/svg" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
+          <div className={`court-container court-${court} tool-${tool}`}><svg ref={svgRef} viewBox={court === 'full' ? '-42 -42 1084 584' : '-42 -42 1084 834'} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
             <rect x="-42" y="-42" width="1084" height={court === 'full' ? 584 : 834} fill="#d59b59" />
             <image id="court-background" href={court === 'full' ? courtFullImage : courtHalfImage} x="0" y="0" width="1000" height={court === 'full' ? 500 : 750} preserveAspectRatio="none" />
             {board.strokes.map(s => <polyline key={s.id} points={formatPoints(s.points)} stroke={s.color} strokeWidth={s.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}

@@ -86,3 +86,32 @@ html,body,#root{min-height:100%;}
  .court-container.court-full{width:min(96%, calc((100dvh - 205px) * 1.856));}
  .court-container.court-half{width:min(96%, calc((100dvh - 205px) * 1.300));}
 }
+
+/* フルコート・ハーフコート共にSVGの元の縦横比を保持 */
+.court-container.court-full svg,
+.court-container.court-half svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+}
+
+/* Redmi Pad 2 Pro landscape: maximize board without changing original court aspect ratio */
+html,body,#root{width:100%;min-height:100%;margin:0}
+.main{width:100%;max-width:none;padding:3px 6px 6px}
+.workspace{width:100%;max-width:none}
+.board-area{width:100%;padding:3px 0 0}
+.board-bar{margin-bottom:4px}
+.court-container.court-full,.court-container.court-half{max-width:100%;margin-inline:auto}
+.court-container.court-full{width:min(100%,calc((100dvh - 105px) * 1084 / 584))}
+.court-container.court-half{width:min(100%,calc((100dvh - 105px) * 1084 / 834))}
+.court-container.court-full svg,.court-container.court-half svg{display:block;width:100%;height:auto;max-height:none;aspect-ratio:auto}
+@media(max-width:850px){
+ .court-container.court-full{width:min(100%,calc((100dvh - 145px) * 1084 / 584))}
+ .court-container.court-half{width:min(100%,calc((100dvh - 145px) * 1084 / 834))}
+}
+@media(orientation:landscape) and (min-width:900px){
+ .board-bar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
+ .compact-tools{flex-wrap:nowrap;flex-shrink:0}
+ .board-utility{margin-left:0}
+}
